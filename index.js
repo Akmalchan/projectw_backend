@@ -24,5 +24,31 @@ app.get("/db-check", async (req, res) => {
     }
 });
 
+// List wardrobe items for a user
+app.get("/wardrobe/list", async (req, res) => {
+    const userId = String(req.query.userId || "").trim();
+    if (!userId) return res.status(400).json({ ok: false, error: "Missing userId" });
+
+    try {
+        // Ensure user exists (hackathon-simple)
+        await pool.query(
+            "INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING",
+            [userId]
+        );
+
+        const r = await pool.query(
+            `SELECT id, user_id, category, label, image_url, phash, created_at
+             FROM wardrobe_items
+             WHERE user_id = $1
+             ORDER BY created_at DESC`,
+            [userId]
+        );
+
+        res.json({ ok: true, items: r.rows });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: String(e) });
+    }
+});
+
 const port = process.env.PORT || 8080;
 app.listen(port, () => console.log(`API listening on ${port}`));
